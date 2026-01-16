@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<title>PhysiXplore-PERGERAKAN PROJEKTIL | 2026 Edition</title>
+<style>
+    :root { 
+        --ai-blue: #00d2ff; --ai-purple: #a855f7; --ai-orange: #f59e0b;
+        --glass: rgba(15, 23, 42, 0.9); 
+    }
+    body { 
+        background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+        color: #f1f5f9; font-family: 'Inter', sans-serif;
+        margin: 0; padding: 20px; min-height: 100vh;
+    }
+    .container { max-width: 1250px; margin: 0 auto; display: grid; grid-template-columns: 1fr 380px; gap: 25px; }
+    
+    h2 { 
+        grid-column: span 2; text-align: center; font-size: 2.2em; letter-spacing: 4px;
+        background: linear-gradient(to right, var(--ai-blue), var(--ai-purple));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
+    }
+
+    .card { 
+        background: var(--glass); backdrop-filter: blur(15px); padding: 25px; border-radius: 20px; 
+        border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6); margin-bottom: 20px;
+    }
+
+    canvas { background: #000; border-radius: 15px; border: 1px solid #334155; width: 100%; height: 420px; display: block; cursor: crosshair; }
+
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    
+    button { 
+        background: transparent; color: var(--ai-blue); border: 1px solid var(--ai-blue);
+        padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s;
+        text-transform: uppercase; font-size: 0.75em;
+    }
+    button:hover { background: var(--ai-blue); color: #000; box-shadow: 0 0 15px var(--ai-blue); }
+    .btn-active { background: var(--ai-orange) !important; color: #000 !important; border-color: var(--ai-orange) !important; }
+
+    .edit-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 20px; }
+    label { font-size: 0.7em; color: var(--ai-blue); text-transform: uppercase; margin-bottom: 5px; display: block; }
+    input { background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #334155; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box; }
+
+    .telemetry-box { font-family: 'Courier New', monospace; font-size: 0.9em; }
+    .data-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .val { color: var(--ai-blue); font-weight: bold; }
+
+    /* FORUM STYLING - INDIVIDUAL REPLY SYSTEM */
+    .qa-container { grid-column: span 2; }
+    .forum-item { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid var(--ai-blue); position: relative; }
+    .reply-section { margin-top: 15px; padding-left: 20px; border-left: 2px dashed #334155; }
+    .reply-card { background: rgba(168, 85, 247, 0.1); padding: 12px; border-radius: 8px; margin-top: 8px; border: 1px solid rgba(168, 85, 247, 0.2); }
+    .badge-pal { background: var(--ai-purple); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65em; font-weight: bold; display: inline-block; margin-bottom: 5px;}
+    
+    .lecturer-panel { border: 1px solid var(--ai-purple); padding: 10px; border-radius: 10px; margin-top: 10px; background: rgba(168, 85, 247, 0.05); }
+    
+    footer { grid-column: span 2; text-align: center; padding: 30px; color: #475569; font-weight: bold; letter-spacing: 5px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>PhysiXplore-PERGERAKAN PROJEKTIL</h2>
+
+    <div class="main-visual">
+        <div class="card">
+            <div class="controls">
+                <button id="playBtn" onclick="togglePlay()">▶ MULAKAN / JEDA</button>
+                <button onclick="resetSim()">⏹ RESET SEMULA</button>
+                <button onclick="generateQuestion()" style="border-color: var(--ai-purple); color: var(--ai-purple);">✨ KES RAWAK</button>
+                <button onclick="resetCamera()">🔄 RESET VIEW</button>
+            </div>
+            <canvas id="canvas" width="800" height="420"></canvas>
+            <div class="edit-grid">
+                <div><label>Laju Awal (u)</label><input type="number" id="inputU" value="40" oninput="initPhysics()"></div>
+                <div><label>Sudut (θ°)</label><input type="number" id="inputA" value="45" oninput="initPhysics()"></div>
+                <div><label>Tinggi (h)</label><input type="number" id="inputH" value="10" oninput="initPhysics()"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="side-panel">
+        <div class="card telemetry-box">
+            <h3 style="color:var(--ai-blue); margin-top:0;">📡 TELEMETRI LIVE</h3>
+            <div class="data-row"><span>Masa (t):</span> <span class="val" id="hud-t">0.00</span>s</div>
+            <div class="data-row"><span>Sesaran X:</span> <span class="val" id="hud-x">0.00</span>m</div>
+            <div class="data-row"><span>Sesaran Y:</span> <span class="val" id="hud-y">0.00</span>m</div>
+            <div class="data-row"><span>Halaju Vy:</span> <span class="val" id="hud-vy">0.00</span>m/s</div>
+            <h3 style="color:var(--ai-purple); margin-top:20px;">📊 ANALISIS</h3>
+            <div class="data-row"><span>Jarak Maks:</span> <span class="val" id="res-r">0</span>m</div>
+            <div class="data-row"><span>Tinggi Maks:</span> <span class="val" id="res-h">0</span>m</div>
+        </div>
+
+        <div class="card">
+            <h3 style="color:var(--ai-blue); margin-top:0;">📝 RUANG PELAJAR</h3>
+            <input type="text" id="studentName" placeholder="Nama Pelajar" style="margin-bottom:8px;">
+            <textarea id="studentMsg" placeholder="Tanya soalan fizik..." style="width:100%; background:rgba(0,0,0,0.4); color:white; border:1px solid #334155; border-radius:8px; padding:10px; height:60px; font-family:inherit;"></textarea>
+            <button onclick="postQuestion()" style="margin-top:8px; width:100%; border-color:var(--ai-blue); color:var(--ai-blue);">HANTAR SOALAN BARU</button>
+            <p style="font-size:0.65em; color:#64748b; margin-top:10px;">*Pensyarah boleh klik 'BALAS' pada setiap soalan di bawah.</p>
+        </div>
+    </div>
+
+    <div class="qa-container card">
+        <h3 style="color:var(--ai-blue); margin-top:0;">📂 PAPAN PERBINCANGAN (JAN 2026)</h3>
+        <div id="forumList">
+            <!-- Questions appear here -->
+        </div>
+    </div>
+
+    <footer>MADE BY FEYNMAN FLYERS | 2026</footer>
+</div>
+
+<script>
+const c = document.getElementById("canvas"), ctx = c.getContext("2d"), g = 9.81;
+let currentParams = {}, camera = { x: 80, y: 350, zoom: 1 };
+let isPlaying = false, currentTime = 0, lastFrameTime = 0, aniID = null;
+let isDragging = false, lastMouse = { x: 0, y: 0 };
+
+function initPhysics() {
+    const u = parseFloat(document.getElementById("inputU").value) || 0;
+    const a = parseFloat(document.getElementById("inputA").value) || 0;
+    const h = parseFloat(document.getElementById("inputH").value) || 0;
+    const rad = a * Math.PI/180;
+    const uy = u * Math.sin(rad), ux = u * Math.cos(rad);
+    const tof = (uy + Math.sqrt(Math.pow(uy, 2) + 2 * g * h)) / g;
+    currentParams = { u, a, h, tof, rad, ux, uy, range: ux * tof, peak: h + (Math.pow(uy, 2) / (2 * g)) };
+    document.getElementById("res-r").innerText = currentParams.range.toFixed(2);
+    document.getElementById("res-h").innerText = currentParams.peak.toFixed(2);
+    if (!isPlaying) draw(currentTime);
+}
+
+function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").innerText = isPlaying ? "⏸ JEDA" : "▶ SAMBUNG";
+    if (isPlaying) { lastFrameTime = performance.now(); aniID = requestAnimationFrame(animate); }
+}
+
+function animate(now) {
+    if (!isPlaying) return;
+    let dt = (now - lastFrameTime) / 1000;
+    lastFrameTime = now;
+    currentTime += dt;
+    if (currentTime >= currentParams.tof) { currentTime = currentParams.tof; isPlaying = false; }
+    draw(currentTime);
+    updateHUD(currentTime);
+    if (isPlaying) aniID = requestAnimationFrame(animate);
+}
+
+function draw(t) {
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.save();
+    ctx.translate(camera.x, camera.y);
+    ctx.scale(camera.zoom, camera.zoom);
+    const scale = 5;
+    const { h, tof, ux, uy } = currentParams;
+    ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 1;
+    for(let i=0; i<3000; i+=100) { ctx.beginPath(); ctx.moveTo(i*scale, -1000); ctx.lineTo(i*scale, 1000); ctx.stroke(); }
+    ctx.strokeStyle = "#475569"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-200, 0); ctx.lineTo(5000, 0); ctx.stroke();
+    ctx.shadowBlur = 10; ctx.shadowColor = "#00d2ff"; ctx.strokeStyle = "#00d2ff"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(0, -h * scale);
+    for(let i=0; i <= tof; i += 0.05) { ctx.lineTo(ux * i * scale, -(h + uy * i - 0.5 * g * i * i) * scale); }
+    ctx.stroke();
+    const bx = ux * t * scale; const by = -(h + uy * t - 0.5 * g * t * t) * scale;
+    ctx.fillStyle = "#f59e0b"; ctx.shadowBlur = 15; ctx.beginPath(); ctx.arc(bx, by, 10, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+}
+
+function updateHUD(t) {
+    const x = currentParams.ux * t;
+    const y = Math.max(0, currentParams.h + (currentParams.uy * t) - (0.5 * g * t * t));
+    document.getElementById("hud-t").innerText = t.toFixed(2);
+    document.getElementById("hud-x").innerText = x.toFixed(2);
+    document.getElementById("hud-y").innerText = y.toFixed(2);
+    document.getElementById("hud-vy").innerText = (currentParams.uy - g * t).toFixed(2);
+}
+
+// --- FORUM LOGIC (MULTI-REPLY SYSTEM) ---
+
+function postQuestion() {
+    const name = document.getElementById("studentName").value || "Pelajar Anonim";
+    const msg = document.getElementById("studentMsg").value;
+    if(!msg) return;
+    const qId = "q-" + Date.now();
+    const forumList = document.getElementById("forumList");
+    
+    const div = document.createElement("div");
+    div.className = "forum-item";
+    div.id = qId;
+    div.innerHTML = `
+        <strong>👤 ${name}</strong>: ${msg}
+        <div class="reply-section" id="replies-${qId}"></div>
+        <div class="lecturer-panel">
+            <input type="text" id="pal-name-${qId}" placeholder="Nama Pensyarah/PAL" style="font-size:0.8em; margin-bottom:5px;">
+            <textarea id="pal-msg-${qId}" placeholder="Tulis jawapan..." style="width:100%; background:rgba(0,0,0,0.3); color:white; border:1px solid #475569; border-radius:5px; padding:5px; height:40px; font-size:0.8em;"></textarea>
+            <button onclick="postReply('${qId}')" style="margin-top:5px; border-color:var(--ai-purple); color:var(--ai-purple); padding:5px 10px;">BALAS SOALAN INI</button>
+        </div>
+    `;
+    forumList.prepend(div);
+    document.getElementById("studentMsg").value = "";
+}
+
+function postReply(qId) {
+    const palName = document.getElementById(`pal-name-${qId}`).value || "Pensyarah / PAL";
+    const palMsg = document.getElementById(`pal-msg-${qId}`).value;
+    if(!palMsg) return;
+    
+    const replySection = document.getElementById(`replies-${qId}`);
+    const replyDiv = document.createElement("div");
+    replyDiv.className = "reply-card";
+    replyDiv.innerHTML = `<span class="badge-pal">🎓 PENSYARAH / PAL</span><br><strong>${palName}</strong>: ${palMsg}`;
+    
+    replySection.appendChild(replyDiv);
+    document.getElementById(`pal-msg-${qId}`).value = ""; // Clear input
+}
+
+function resetSim() { currentTime = 0; isPlaying = false; document.getElementById("playBtn").innerText = "▶ MULAKAN / JEDA"; initPhysics(); }
+function resetCamera() { camera = { x: 80, y: 350, zoom: 1 }; draw(currentTime); }
+function generateQuestion() { document.getElementById("inputU").value = Math.floor(Math.random()*30)+20; document.getElementById("inputA").value = Math.floor(Math.random()*50)+15; document.getElementById("inputH").value = Math.floor(Math.random()*40); resetSim(); }
+
+c.onwheel = (e) => { e.preventDefault(); camera.zoom += e.deltaY < 0 ? 0.1 : -0.1; camera.zoom = Math.max(0.1, camera.zoom); draw(currentTime); };
+c.onmousedown = (e) => { isDragging = true; lastMouse = { x: e.clientX, y: e.clientY }; };
+window.onmouseup = () => { isDragging = false; };
+window.onmousemove = (e) => { if(!isDragging) return; camera.x += e.clientX-lastMouse.x; camera.y += e.clientY-lastMouse.y; lastMouse={x:e.clientX, y:e.clientY}; draw(currentTime); };
+
+window.onload = initPhysics;
+</script>
+</body>
+</html>
